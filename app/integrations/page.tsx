@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
@@ -27,7 +27,7 @@ const integrationOptions = [
   },
 ];
 
-export default function Integrations() {
+function IntegrationsContent() {
   const searchParams = useSearchParams();
   const [selectedIntegration, setSelectedIntegration] = useState<IntegrationType>("task-management");
 
@@ -87,5 +87,13 @@ export default function Integrations() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function Integrations() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <IntegrationsContent />
+    </Suspense>
   );
 } 
