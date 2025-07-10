@@ -1,10 +1,12 @@
 import Logo from "./logo";
 import Image from "next/image";
 import FooterIllustration from "@/public/images/footer-illustration.svg";
+import Cta from "@/components/cta";
 
 export default function Footer() {
   return (
     <footer>
+      <Cta />
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         {/* Footer illustration */}
         <div

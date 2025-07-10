@@ -72,6 +72,22 @@
       background-position: 200% center;
     }
   }
+  @keyframes scroll-left {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes scroll-right {
+    0% {
+      transform: translateX(-50%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
 }
 
 /*
@@ -89,5 +105,28 @@
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+@layer utilities {
+  .animate-scroll-left {
+    animation: scroll-left 30s linear infinite;
+  }
+  .animate-scroll-right {
+    animation: scroll-right 30s linear infinite;
+  }
+}
+
+@layer components {
+  .ticker-row {
+    display: flex;
+    flex-wrap: nowrap;
+    width: max-content;
+  }
+  .ticker-row-ltr {
+    animation: scroll-left 30s linear infinite;
+  }
+  .ticker-row-rtl {
+    animation: scroll-right 30s linear infinite;
   }
 }
