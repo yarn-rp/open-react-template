@@ -46,6 +46,7 @@ export default function Header() {
                 Features
               </Link>
             </li>
+            {/* Temporarily commented out integrations link
             <li>
               <Link
                 href="/integrations"
@@ -54,6 +55,7 @@ export default function Header() {
                 Integrations
               </Link>
             </li>
+            */}
             <li>
               <Link
                 href="#demo"
