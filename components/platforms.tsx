@@ -65,10 +65,23 @@ const BOTTOM_INTEGRATIONS = INTEGRATIONS.slice(Math.ceil(INTEGRATIONS.length / 2
 
 export default function Platforms() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bottomScrollRef = useRef<HTMLDivElement>(null);
   const topIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const bottomIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Set initial positions and infinite auto-scroll logic for top row (left to right)
   useEffect(() => {
@@ -104,23 +117,24 @@ export default function Platforms() {
   }, []);
 
   useEffect(() => {
+    // Enable auto-scroll on both desktop and mobile
     topIntervalRef.current = setInterval(() => {
       if (topScrollRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = topScrollRef.current;
         const singleListWidth = scrollWidth / 2;
-        let next = scrollLeft + 2.4; // 1.2x speed (2 * 1.2)
+        let next = scrollLeft + (isMobile ? 1.2 : 2.4); // Slower speed on mobile
         if (next >= singleListWidth) {
           topScrollRef.current.scrollLeft = 0;
-          next = 2.4;
+          next = isMobile ? 1.2 : 2.4;
         }
         topScrollRef.current.scrollTo({ left: next, behavior: "auto" });
       }
-    }, 20);
+    }, isMobile ? 30 : 20); // Slower interval on mobile for better performance
     
     return () => {
       if (topIntervalRef.current) clearInterval(topIntervalRef.current);
     };
-  }, []);
+  }, [isMobile]);
 
   // Set initial positions and infinite auto-scroll logic for bottom row (right to left)
   useEffect(() => {
@@ -155,27 +169,28 @@ export default function Platforms() {
   }, []);
 
   useEffect(() => {
+    // Enable auto-scroll on both desktop and mobile
     // Delay the start of auto-scroll to ensure initial position is set
     const startAutoScroll = setTimeout(() => {
       bottomIntervalRef.current = setInterval(() => {
         if (bottomScrollRef.current) {
           const { scrollLeft, scrollWidth, clientWidth } = bottomScrollRef.current;
           const singleListWidth = scrollWidth / 2;
-          let next = scrollLeft - 1.5; // 0.75x speed (-2 * 0.75)
+          let next = scrollLeft - (isMobile ? 0.75 : 1.5); // Slower speed on mobile
           if (next <= 0) {
             bottomScrollRef.current.scrollLeft = singleListWidth;
-            next = singleListWidth - 1.5;
+            next = singleListWidth - (isMobile ? 0.75 : 1.5);
           }
           bottomScrollRef.current.scrollTo({ left: next, behavior: "auto" });
         }
-      }, 20);
-    }, 500); // Start auto-scroll after 500ms to ensure initial position is set
+      }, isMobile ? 30 : 20); // Slower interval on mobile for better performance
+    }, isMobile ? 300 : 500); // Shorter delay on mobile
     
     return () => {
       clearTimeout(startAutoScroll);
       if (bottomIntervalRef.current) clearInterval(bottomIntervalRef.current);
     };
-  }, []);
+  }, [isMobile]);
 
 
 
@@ -207,21 +222,21 @@ export default function Platforms() {
         {/* Single row - left to right */}
         <div
           ref={topScrollRef}
-          className="flex items-center gap-8 py-8 overflow-hidden whitespace-nowrap"
-          style={{ scrollBehavior: "smooth" }}
+          className="flex items-center gap-3 md:gap-8 py-6 md:py-8 overflow-x-auto md:overflow-hidden whitespace-nowrap scrollbar-hide"
+          style={{ scrollBehavior: isMobile ? "smooth" : "auto" }}
         >
           {[...INTEGRATIONS, ...INTEGRATIONS, ...INTEGRATIONS, ...INTEGRATIONS].map((integration, index) => (
             <div
               key={`top-${index}`}
-              className="flex items-center justify-center bg-gray-800/40 rounded-lg border border-gray-700/30 flex-shrink-0 w-64 h-36 p-4"
+              className="flex items-center justify-center bg-gray-800/40 rounded-lg border border-gray-700/30 flex-shrink-0 w-40 md:w-64 h-24 md:h-36 p-2 md:p-4"
             >
-              <div className={`flex items-center ${integration.showName ? 'gap-3 w-full' : ''}`}>
+              <div className={`flex items-center ${integration.showName ? 'gap-2 md:gap-3 w-full' : ''}`}>
                 <Image
                   src={integration.logo}
                   alt={integration.name + " logo"}
                   width={integration.logo.includes('.png') ? 160 : 0}
                   height={integration.logo.includes('.png') ? 160 : 0}
-                  className={`object-contain transition-all duration-300 ${integration.showName ? 'w-auto h-auto max-w-[40%] max-h-full flex-shrink-0' : 'w-auto h-auto max-w-full max-h-full'}`}
+                  className={`object-contain transition-all duration-300 ${integration.showName ? 'w-auto h-auto max-w-[40%] md:max-w-[40%] max-h-full flex-shrink-0' : 'w-auto h-auto max-w-full max-h-full'}`}
                   onError={(e) => {
                     console.error(`Failed to load image: ${integration.logo}`);
                     // You could set a fallback image here if needed
@@ -230,7 +245,7 @@ export default function Platforms() {
                     console.log(`Successfully loaded: ${integration.logo}`);
                   }}
                 />
-                {integration.showName && <h5 className="text-base font-semibold text-gray-100 flex-1 leading-tight">{integration.name}</h5>}
+                {integration.showName && <h5 className="text-xs md:text-base font-semibold text-gray-100 flex-1 leading-tight">{integration.name}</h5>}
               </div>
             </div>
           ))}

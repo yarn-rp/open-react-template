@@ -7,6 +7,9 @@ import Card from './Card';
 import { useState, useEffect, useRef } from 'react';
 
 // Base conversation component
+type Grid3x3Participant = 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+type Grid2x2Participant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
 interface MessageInstance {
   id: string;
   text: string;
@@ -14,6 +17,7 @@ interface MessageInstance {
   color: string;
   position: any;
   isFading: boolean;
+  participant?: Grid3x3Participant | Grid2x2Participant;
 }
 
 // Array of participant colors for randomization
@@ -40,15 +44,64 @@ interface ConversationMessage {
   sender: 'participant' | 'ai';
   color?: string;
   position?: { top: string; left: string };
+  participant?: string; // New field for participant-based positioning
 }
 
 interface ConversationOverlayProps {
   conversation: ConversationMessage[];
-  getAIPosition: () => { top: string; left: string };
   startDelay?: number; // Delay in milliseconds before starting the conversation
 }
 
-function ConversationOverlay({ conversation, getAIPosition, startDelay = 0 }: ConversationOverlayProps) {
+function clampPosition(pos: { top?: string; left?: string }): { top?: string; left?: string } {
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    // Clamp between 8% and 75% for mobile
+    const clamp = (val: number | string) => Math.max(8, Math.min(75, parseFloat(val as string)));
+    return {
+      top: pos.top ? `${clamp(pos.top)}%` : '50%',
+      left: pos.left ? `${clamp(pos.left)}%` : '50%',
+    };
+  }
+  return pos;
+}
+
+// 1. Grid mappings
+const gridMappings: {
+  '3x3': Record<Grid3x3Participant, { top: number; left: number }>;
+  '2x2': Record<Grid2x2Participant, { top: number; left: number }>;
+} = {
+  '3x3': {
+    'top-left': { top: 16.67, left: 16.67 },
+    'top-center': { top: 16.67, left: 50 },
+    'top-right': { top: 16.67, left: 83.33 },
+    'center-left': { top: 50, left: 16.67 },
+    'center': { top: 50, left: 50 },
+    'center-right': { top: 50, left: 83.33 },
+    'bottom-left': { top: 83.33, left: 16.67 },
+    'bottom-center': { top: 83.33, left: 50 },
+    'bottom-right': { top: 83.33, left: 83.33 },
+  },
+  '2x2': {
+    'top-left': { top: 12.5, left: 12.5 },
+    'top-right': { top: 12.5, left: 62.5 },
+    'bottom-left': { top: 62.5, left: 12.5 },
+    'bottom-right': { top: 62.5, left: 62.5 },
+  },
+};
+
+// Overload getParticipantPosition for type safety
+function getParticipantPosition(participant: Grid3x3Participant, grid: '3x3'): { top: string; left: string };
+function getParticipantPosition(participant: Grid2x2Participant, grid: '2x2'): { top: string; left: string };
+function getParticipantPosition(participant: any, grid: '3x3' | '2x2') {
+  const base = grid === '3x3'
+    ? gridMappings['3x3'][participant as Grid3x3Participant] || { top: 50, left: 50 }
+    : gridMappings['2x2'][participant as Grid2x2Participant] || { top: 50, left: 50 };
+  return {
+    top: `${base.top}%`,
+    left: `${base.left}%`,
+  };
+}
+
+function ConversationOverlay({ conversation, startDelay = 0, gridType = '3x3' }: ConversationOverlayProps & { gridType?: '3x3' | '2x2' }) {
   const [activeMessages, setActiveMessages] = useState<MessageInstance[]>([]);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -109,7 +162,10 @@ function ConversationOverlay({ conversation, getAIPosition, startDelay = 0 }: Co
         color: message.sender === 'ai' 
           ? 'bg-blue-500 text-white' 
           : (message.color || participantColors[Math.floor(Math.random() * participantColors.length)]),
-        position: message.sender === 'ai' ? getAIPosition() : (message.position || { top: '50%', left: '50%' }),
+        position: message.position || { top: '50%', left: '50%' },
+        participant: message.sender === 'ai' 
+          ? (gridType === '2x2' ? 'bottom-right' : 'center')
+          : (message.participant as Grid3x3Participant | Grid2x2Participant | undefined),
         isFading: false
       };
 
@@ -149,7 +205,7 @@ function ConversationOverlay({ conversation, getAIPosition, startDelay = 0 }: Co
 
     // Show the current message
     showNextMessage();
-  }, [currentMessageIndex, isPlaying, conversation, getAIPosition]);
+  }, [currentMessageIndex, isPlaying, conversation, gridType]);
 
   return (
     <>
@@ -167,16 +223,52 @@ function ConversationOverlay({ conversation, getAIPosition, startDelay = 0 }: Co
         
         const tailDirection = getTailDirection();
         
+        // Use participant-based positioning
+        let pos;
+        if (message.participant) {
+          let basePos;
+          if (gridType === '2x2') {
+            basePos = getParticipantPosition(message.participant as Grid2x2Participant, '2x2');
+          } else {
+            basePos = getParticipantPosition(message.participant as Grid3x3Participant, '3x3');
+          }
+          
+          // Calculate centered position accounting for pill dimensions
+          // Estimate pill dimensions based on text length
+          const textLength = message.text.length;
+          const estimatedWidth = Math.max(120, textLength * 8); // Base width + text length * ~8px per character
+          const estimatedHeight = 40; // Fixed height for pills
+          
+          // Convert percentage to pixels for calculation (assuming container is 600x600)
+          const containerWidth = 600;
+          const containerHeight = 600;
+          
+          const centerX = parseFloat(basePos.left) / 100 * containerWidth;
+          const centerY = parseFloat(basePos.top) / 100 * containerHeight;
+          
+          // Calculate top-left position to center the pill
+          const leftPx = centerX - (estimatedWidth / 2);
+          const topPx = centerY - (estimatedHeight / 2);
+          
+          // Convert back to percentages
+          pos = {
+            left: `${(leftPx / containerWidth) * 100}%`,
+            top: `${(topPx / containerHeight) * 100}%`
+          };
+        } else {
+          pos = message.position || { top: '50%', left: '50%' };
+        }
+        
         return (
           <div
             key={message.id}
-            className={`absolute z-30 rounded-full px-4 py-1 text-xs md:text-sm shadow-2xl backdrop-blur-md border border-indigo-400/30 whitespace-nowrap transition-all duration-700 animate-in ${message.color} ${
+            className={`absolute z-30 rounded-full px-4 py-1 text-xs md:text-sm shadow-2xl backdrop-blur-md border border-indigo-400/30 whitespace-nowrap transition-opacity duration-700 animate-in ${message.color} ${
               message.isFading 
                 ? 'opacity-0 scale-95' 
                 : 'opacity-100 scale-100'
             }`}
             style={{
-              ...message.position,
+              ...pos,
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.2), 0 10px 15px -3px rgba(0, 0, 0, 0.3)',
               animation: message.isFading ? 'none' : 'messageEntrance 0.5s ease-out'
             }}
@@ -263,158 +355,77 @@ function ConversationOverlay({ conversation, getAIPosition, startDelay = 0 }: Co
   );
 }
 
-// Task Management Conversation
+// Update all conversation data to use only 'top-left', 'top-right', 'bottom-left', 'bottom-right' for participant values
 const taskManagementConversation: ConversationMessage[] = [
-  // Initial setup and task creation
-  { text: "We need to finish the Q4 roadmap", sender: 'participant', position: { top: '15%', left: '12%' } },
+  { text: "We need to finish the Q4 roadmap", sender: 'participant', participant: 'top-left' },
   { text: "Creating task: Q4 Roadmap Planning", sender: 'ai' },
-  { text: "Assign that to Sarah", sender: 'participant', position: { top: '25%', left: '82%' } },
+  { text: "Assign that to Sarah", sender: 'participant', participant: 'bottom-left' },
   { text: "Assigned to Sarah, due Dec 15th", sender: 'ai' },
-  
-  // Follow-up and status updates
-  { text: "What's the status on the API integration?", sender: 'participant', position: { top: '45%', left: '8%' } },
+  { text: "What's the status on the API integration?", sender: 'participant', participant: 'top-right' },
   { text: "API integration is 80% complete, blocked by auth", sender: 'ai' },
-  { text: "Move it to Mike's queue", sender: 'participant', position: { top: '65%', left: '85%' } },
+  { text: "Move it to Mike's queue", sender: 'participant', participant: 'bottom-left' },
   { text: "Reassigned to Mike, priority: high", sender: 'ai' },
-  
-  // Meeting follow-up
-  { text: "From our client meeting today...", sender: 'participant', position: { top: '35%', left: '5%' } },
+  { text: "From our client meeting today...", sender: 'participant', participant: 'center-right' },
   { text: "Creating 3 follow-up tasks", sender: 'ai' },
-  { text: "Schedule demo for next week", sender: 'participant', position: { top: '75%', left: '18%' } },
+  { text: "Schedule demo for next week", sender: 'participant', participant: 'bottom-left' },
   { text: "Calendar event created for Tuesday 2pm", sender: 'ai' },
-  
-  // Project overview
-  { text: "Show me the sprint overview", sender: 'participant', position: { top: '20%', left: '78%' } },
+  { text: "Show me the sprint overview", sender: 'participant', participant: 'top-left' },
   { text: "12 tasks active, 3 due today, 2 blockers", sender: 'ai' },
-  { text: "Which ones are at risk?", sender: 'participant', position: { top: '55%', left: '10%' } },
+  { text: "Which ones are at risk?", sender: 'participant', participant: 'bottom-left' },
   { text: "Mobile app testing and payment integration", sender: 'ai' },
-  
-  // Quick actions
-  { text: "Mark the design review as complete", sender: 'participant', position: { top: '30%', left: '88%' } },
+  { text: "Mark the design review as complete", sender: 'participant', participant: 'bottom-right' },
   { text: "Design review completed, moving to QA", sender: 'ai' },
-  { text: "Any dependencies I should know about?", sender: 'participant', position: { top: '70%', left: '15%' } },
+  { text: "Any dependencies I should know about?", sender: 'participant', participant: 'bottom-left' },
   { text: "Waiting on legal approval for terms", sender: 'ai' },
 ];
 
-// Calendar Conversation
 const calendarConversation: ConversationMessage[] = [
-  // Initial meeting scheduling
-  { text: "We need to schedule the client presentation", sender: 'participant', position: { top: '10%', left: '25%' } },
+  { text: "We need to schedule the client presentation", sender: 'participant', participant: 'top-left' },
   { text: "Creating calendar event: Client Presentation", sender: 'ai' },
-  { text: "Make it next Tuesday at 2pm", sender: 'participant', position: { top: '20%', left: '70%' } },
+  { text: "Make it next Tuesday at 2pm", sender: 'participant', participant: 'bottom-left' },
   { text: "Event scheduled for Tuesday 2pm, sent invites", sender: 'ai' },
-  
-  // Calendar conflict resolution
-  { text: "I have a conflict at 2pm", sender: 'participant', position: { top: '40%', left: '15%' } },
+  { text: "I have a conflict at 2pm", sender: 'participant', participant: 'top-left' },
   { text: "Found alternative: Tuesday 3pm or Wednesday 2pm", sender: 'ai' },
-  { text: "Wednesday works better for everyone", sender: 'participant', position: { top: '45%', left: '65%' } },
+  { text: "Wednesday works better for everyone", sender: 'participant', participant: 'bottom-left' },
   { text: "Rescheduled to Wednesday 2pm, updated all invites", sender: 'ai' },
-  
-  // Follow-up scheduling
-  { text: "Don't forget the follow-up meeting", sender: 'participant', position: { top: '30%', left: '8%' } },
+  { text: "Don't forget the follow-up meeting", sender: 'participant', participant: 'top-left' },
   { text: "Creating follow-up: Friday 10am", sender: 'ai' },
-  { text: "Add the Q&A session too", sender: 'participant', position: { top: '75%', left: '25%' } },
+  { text: "Add the Q&A session too", sender: 'participant', participant: 'bottom-left' },
   { text: "Added Q&A session for Friday 11am", sender: 'ai' },
-  
-  // Team availability check
-  { text: "When is everyone free next week?", sender: 'participant', position: { top: '25%', left: '55%' } },
+  { text: "When is everyone free next week?", sender: 'participant', participant: 'top-left' },
   { text: "Team availability: Mon 1pm, Wed 3pm, Fri 9am", sender: 'ai' },
-  { text: "Book the Monday slot", sender: 'participant', position: { top: '50%', left: '12%' } },
+  { text: "Book the Monday slot", sender: 'participant', participant: 'bottom-left' },
   { text: "Team meeting scheduled for Monday 1pm", sender: 'ai' },
-  
-  // Calendar insights
-  { text: "Show me this week's schedule", sender: 'participant', position: { top: '35%', left: '75%' } },
+  { text: "Show me this week's schedule", sender: 'participant', participant: 'top-left' },
   { text: "This week: 8 meetings, 3 deadlines, 2 free slots", sender: 'ai' },
-  { text: "Any conflicts I should know about?", sender: 'participant', position: { top: '65%', left: '18%' } },
+  { text: "Any conflicts I should know about?", sender: 'participant', participant: 'bottom-left' },
   { text: "Double booking detected: Tuesday 3pm", sender: 'ai' },
 ];
 
-// Meeting Platforms Conversation
 const meetingPlatformsConversation: ConversationMessage[] = [
-  // Auto-joining meetings
-  { text: "I'm running late to the client call", sender: 'participant', position: { top: '8%', left: '35%' } },
+  { text: "I'm running late to the client call", sender: 'participant', participant: 'top-left' },
   { text: "Joining the meeting for you", sender: 'ai' },
-  { text: "Can you take notes?", sender: 'participant', position: { top: '18%', left: '85%' } },
+  { text: "Can you take notes?", sender: 'participant', participant: 'bottom-left' },
   { text: "Recording and taking notes", sender: 'ai' },
-  
-  // Action item capture
-  { text: "What were the action items?", sender: 'participant', position: { top: '38%', left: '5%' } },
+  { text: "What were the action items?", sender: 'participant', participant: 'top-left' },
   { text: "3 action items captured from the meeting", sender: 'ai' },
-  { text: "Create tasks for each", sender: 'participant', position: { top: '58%', left: '90%' } },
+  { text: "Create tasks for each", sender: 'participant', participant: 'bottom-left' },
   { text: "Tasks created and assigned", sender: 'ai' },
-  
-  // AI participation
-  { text: "Ask about the timeline", sender: 'participant', position: { top: '28%', left: '22%' } },
+  { text: "Ask about the timeline", sender: 'participant', participant: 'top-left' },
   { text: "Asking about project timeline", sender: 'ai' },
-  { text: "Good, now summarize the key points", sender: 'participant', position: { top: '78%', left: '8%' } },
+  { text: "Good, now summarize the key points", sender: 'participant', participant: 'bottom-left' },
   { text: "Key points summarized and shared", sender: 'ai' },
-  
-  // Platform support
-  { text: "Switch to Zoom for the next call", sender: 'participant', position: { top: '12%', left: '55%' } },
+  { text: "Switch to Zoom for the next call", sender: 'participant', participant: 'top-left' },
   { text: "Switching to Zoom, link updated", sender: 'ai' },
-  { text: "Is everyone connected?", sender: 'participant', position: { top: '48%', left: '88%' } },
+  { text: "Is everyone connected?", sender: 'participant', participant: 'bottom-left' },
   { text: "All participants confirmed connected", sender: 'ai' },
-  
-  // Meeting insights
-  { text: "How was the meeting engagement?", sender: 'participant', position: { top: '68%', left: '12%' } },
+  { text: "How was the meeting engagement?", sender: 'participant', participant: 'top-left' },
   { text: "High engagement, 95% participation rate", sender: 'ai' },
-  { text: "Any follow-ups needed?", sender: 'participant', position: { top: '88%', left: '45%' } },
+  { text: "Any follow-ups needed?", sender: 'participant', participant: 'bottom-left' },
   { text: "2 follow-up meetings scheduled", sender: 'ai' },
 ];
 
-function getRandomCenterOffset() {
-  const topPercent = 40 + Math.random() * 20;
-  const leftPercent = 40 + Math.random() * 20;
-  
-  const containerWidth = 600;
-  const containerHeight = 600;
-  const messageWidth = 120;
-  const messageHeight = 40;
-  
-  const actualLeft = (leftPercent / 100) * containerWidth - (messageWidth / 2);
-  const actualTop = (topPercent / 100) * containerHeight - (messageHeight / 2);
-  
-  return { 
-    top: `${Math.max(10, Math.min(90, (actualTop / containerHeight) * 100))}%`, 
-    left: `${Math.max(10, Math.min(90, (actualLeft / containerWidth) * 100))}%` 
-  };
-}
 
-function getCalendarAIOffset() {
-  const topPercent = 70 + Math.random() * 20;
-  const leftPercent = 70 + Math.random() * 20;
-  
-  const containerWidth = 600;
-  const containerHeight = 600;
-  const messageWidth = 120;
-  const messageHeight = 40;
-  
-  const actualLeft = (leftPercent / 100) * containerWidth - (messageWidth / 2);
-  const actualTop = (topPercent / 100) * containerHeight - (messageHeight / 2);
-  
-  return { 
-    top: `${Math.max(60, Math.min(85, (actualTop / containerHeight) * 100))}%`, 
-    left: `${Math.max(60, Math.min(85, (actualLeft / containerWidth) * 100))}%` 
-  };
-}
-
-function getMeetingPlatformsAIOffset() {
-  const topPercent = 30 + Math.random() * 20;
-  const leftPercent = 60 + Math.random() * 20;
-  
-  const containerWidth = 600;
-  const containerHeight = 600;
-  const messageWidth = 120;
-  const messageHeight = 40;
-  
-  const actualLeft = (leftPercent / 100) * containerWidth - (messageWidth / 2);
-  const actualTop = (topPercent / 100) * containerHeight - (messageHeight / 2);
-  
-  return { 
-    top: `${Math.max(20, Math.min(50, (actualTop / containerHeight) * 100))}%`, 
-    left: `${Math.max(50, Math.min(80, (actualLeft / containerWidth) * 100))}%` 
-  };
-}
 
 const categories = [
   {
@@ -523,7 +534,7 @@ export default function IntegrationsCategoriesGrid() {
           {categories.map((cat, idx) => (
             <div
               key={cat.id}
-              className={`flex flex-col-reverse md:flex-row items-start gap-4 md:gap-12 ${idx % 2 === 1 ? 'md:flex-row-reverse' : ''}`}
+              className={`flex flex-col-reverse md:flex-row items-start gap-4 md:gap-12 w-full ${idx % 2 === 1 ? 'md:flex-row-reverse' : ''}`}
             >
               {/* Text Section */}
               <div className="flex-[2_2_0%] flex flex-col justify-start items-start space-y-4 md:space-y-6">
@@ -544,10 +555,17 @@ export default function IntegrationsCategoriesGrid() {
                 </Link>
               </div>
               {/* Image Section */}
-              <div className="flex-[3_3_0%] flex items-center justify-center relative">
-                <Card className="w-full max-w-2xl">
-                  <div className="relative w-full aspect-square">
-                    <Image src={cat.mainImage.src} alt={cat.mainImage.alt} fill style={{objectFit: 'cover'}} className="filter grayscale" />
+              <div className="flex-[3_3_0%] flex items-center justify-center relative h-full w-full">
+                <Card className="w-full max-w-2xl h-full">
+                  <div className="relative w-full aspect-square min-h-[220px] sm:min-h-[320px]">
+                    <Image 
+                      src={cat.mainImage.src} 
+                      alt={cat.mainImage.alt} 
+                      fill 
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      style={{objectFit: 'cover'}} 
+                      className="filter grayscale" 
+                    />
                     <div className="absolute inset-0 bg-black opacity-40 pointer-events-none" />
                     <div className="absolute inset-0 bg-indigo-500 opacity-20 pointer-events-none" />
                   </div>
@@ -559,8 +577,8 @@ export default function IntegrationsCategoriesGrid() {
                   <div className="absolute inset-0 pointer-events-none">
                     <ConversationOverlay 
                       conversation={taskManagementConversation}
-                      getAIPosition={getRandomCenterOffset}
                       startDelay={0}
+                      gridType="3x3"
                     />
                   </div>
                 )}
@@ -570,22 +588,13 @@ export default function IntegrationsCategoriesGrid() {
                   <div className="absolute inset-0 pointer-events-none">
                     <ConversationOverlay 
                       conversation={calendarConversation}
-                      getAIPosition={getCalendarAIOffset}
                       startDelay={500}
+                      gridType="2x2"
                     />
                   </div>
                 )}
                 
-                {/* Meeting Platforms Conversation - Animation removed */}
-                {/* {cat.id === 'meeting-platforms' && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    <ConversationOverlay 
-                      conversation={meetingPlatformsConversation}
-                      getAIPosition={getMeetingPlatformsAIOffset}
-                      startDelay={1000}
-                    />
-                  </div>
-                )} */}
+
               </div>
             </div>
           ))}

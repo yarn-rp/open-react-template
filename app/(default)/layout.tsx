@@ -15,9 +15,11 @@ export default function DefaultLayout({
   useEffect(() => {
     AOS.init({
       once: true,
-      disable: "phone",
+      disable: false, // Enable on all devices including mobile
       duration: 600,
       easing: "ease-out-sine",
+      offset: 50, // Reduce offset for mobile
+      delay: 0,
     });
   });
 

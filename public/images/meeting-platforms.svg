@@ -1,1 +1,66 @@
- 
+<svg width="350" height="288" viewBox="0 0 350 288" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#334155;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="350" height="288" fill="url(#bgGradient)"/>
+  
+  <!-- Meeting Platform Cards -->
+  <g transform="translate(20, 20)">
+    <!-- Zoom Card -->
+    <rect x="0" y="0" width="100" height="80" rx="12" fill="url(#cardGradient)" stroke="#3b82f6" stroke-width="2"/>
+    <circle cx="50" cy="35" r="15" fill="#3b82f6"/>
+    <path d="M45 30 L55 35 L45 40 Z" fill="white"/>
+    <text x="50" y="65" text-anchor="middle" fill="#e2e8f0" font-family="Arial" font-size="12" font-weight="bold">Zoom</text>
+    
+    <!-- Teams Card -->
+    <rect x="120" y="0" width="100" height="80" rx="12" fill="url(#cardGradient)" stroke="#6366f1" stroke-width="2"/>
+    <circle cx="170" cy="35" r="15" fill="#6366f1"/>
+    <path d="M165 30 L175 35 L165 40 Z" fill="white"/>
+    <text x="170" y="65" text-anchor="middle" fill="#e2e8f0" font-family="Arial" font-size="12" font-weight="bold">Teams</text>
+    
+    <!-- Google Meet Card -->
+    <rect x="240" y="0" width="100" height="80" rx="12" fill="url(#cardGradient)" stroke="#10b981" stroke-width="2"/>
+    <circle cx="290" cy="35" r="15" fill="#10b981"/>
+    <path d="M285 30 L295 35 L285 40 Z" fill="white"/>
+    <text x="290" y="65" text-anchor="middle" fill="#e2e8f0" font-family="Arial" font-size="12" font-weight="bold">Meet</text>
+  </g>
+  
+  <!-- Video Call Interface -->
+  <g transform="translate(20, 120)">
+    <rect x="0" y="0" width="310" height="140" rx="16" fill="url(#cardGradient)" stroke="#475569" stroke-width="1"/>
+    
+    <!-- Main Video Area -->
+    <rect x="10" y="10" width="200" height="120" rx="8" fill="#1e293b"/>
+    <circle cx="110" cy="70" r="25" fill="#3b82f6" opacity="0.8"/>
+    <path d="M105 60 L115 70 L105 80 Z" fill="white"/>
+    
+    <!-- Participants -->
+    <rect x="220" y="10" width="80" height="35" rx="6" fill="#1e293b"/>
+    <circle cx="230" cy="27" r="8" fill="#6366f1"/>
+    <text x="240" y="32" fill="#e2e8f0" font-family="Arial" font-size="10">John</text>
+    
+    <rect x="220" y="50" width="80" height="35" rx="6" fill="#1e293b"/>
+    <circle cx="230" cy="67" r="8" fill="#10b981"/>
+    <text x="240" y="72" fill="#e2e8f0" font-family="Arial" font-size="10">Sarah</text>
+    
+    <rect x="220" y="90" width="80" height="35" rx="6" fill="#1e293b"/>
+    <circle cx="230" cy="107" r="8" fill="#f59e0b"/>
+    <text x="240" y="112" fill="#e2e8f0" font-family="Arial" font-size="10">Mike</text>
+  </g>
+  
+  <!-- Connection Lines -->
+  <g stroke="#3b82f6" stroke-width="2" opacity="0.6">
+    <path d="M170 60 Q200 40 230 60" fill="none"/>
+    <path d="M170 80 Q200 100 230 80" fill="none"/>
+    <path d="M170 100 Q200 120 230 100" fill="none"/>
+  </g>
+</svg> 
