@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined';
@@ -29,6 +29,7 @@ const integrationOptions = [
 
 function IntegrationsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedIntegration, setSelectedIntegration] = useState<IntegrationType>("task-management");
 
   // Handle category parameter from URL
@@ -38,6 +39,16 @@ function IntegrationsContent() {
       setSelectedIntegration(category as IntegrationType);
     }
   }, [searchParams]);
+
+  const handleTabSelect = (id: string) => {
+    const newCategory = id as IntegrationType;
+    setSelectedIntegration(newCategory);
+    
+    // Update URL with the new category
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('category', newCategory);
+    router.push(`/integrations?${params.toString()}`);
+  };
 
   const renderSelectedComponent = () => {
     switch (selectedIntegration) {
@@ -76,7 +87,7 @@ function IntegrationsContent() {
             <SegmentedTabs
               options={integrationOptions}
               selected={selectedIntegration}
-              onSelect={id => setSelectedIntegration(id as IntegrationType)}
+              onSelect={handleTabSelect}
             />
           </div>
 

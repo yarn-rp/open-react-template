@@ -7,7 +7,7 @@ import IntegrationsCategoriesGrid from "./IntegrationsCategoriesGrid";
 
 export default function Workflows() {
   return (
-    <section>
+    <section id="how-it-works">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="pb-12 md:pb-20">
           {/* Section header */}
