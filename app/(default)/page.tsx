@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Blueprint - AI Voice Agents That Join and Speak in Your Meetings",
-  description: "Blueprint builds custom AI teammates that show up, understand, and speak during your meetings — plus handle your calendar and tasks. Human, not robotic.",
+  title: "Blueprint - Get an AI Coworker, Ready to Join Every Call",
+  description: "Build AI agents around your workflow—ones that join every call, speak up with insights, and turn talk into action.",
 };
 
 import PageIllustration from "@/components/page-illustration";
